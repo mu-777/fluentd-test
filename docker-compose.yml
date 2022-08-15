@@ -1,16 +1,6 @@
 version: "3"
 
 services:
-  fluentd:
-    build: ./fluentd
-    volumes:
-      - ./fluentd/conf:/fluentd/etc
-    links:
-      - "elasticsearch"
-    ports:
-      - "24224:24224"
-      - "24224:24224/udp"
-
   setup:
     image: docker.elastic.co/elasticsearch/elasticsearch:${STACK_VERSION}
     volumes:
@@ -60,6 +50,24 @@ services:
       timeout: 5s
       retries: 120
 
+  fluentd:
+    depends_on:
+      setup:
+        condition: service_healthy
+    build:
+      context: ./fluentd
+      dockerfile: ./dockerfile
+    volumes:
+      - certs:/fluentd/certs
+      - fluentdata:/fluentd/data
+      - ./fluentd/conf:/fluentd/etc
+    links:
+      - "elasticsearch"
+    ports:
+      - "24224:24224"
+      - "24224:24224/udp"
+
+
   elasticsearch:
     depends_on:
       setup:
@@ -67,7 +75,7 @@ services:
     image: docker.elastic.co/elasticsearch/elasticsearch:${STACK_VERSION}
     volumes:
       - certs:/usr/share/elasticsearch/config/certs
-      - elasticsearch:/usr/share/elasticsearch/data
+      - esdata:/usr/share/elasticsearch/data
     ports:
       - ${ES_PORT}:9200
     environment:
@@ -135,7 +143,9 @@ services:
 volumes:
   certs:
     driver: local
-  elasticsearch:
+  fluentdata:
+    driver: local
+  esdata:
     driver: local
   kibanadata:
     driver: local
